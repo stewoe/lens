@@ -101,6 +101,9 @@ import { registerMobX } from "@ogre-tools/injectable-extension-for-mobx";
 import electronInjectable from "./utils/resolve-system-proxy/electron.injectable";
 import type { HotbarStore } from "../common/hotbars/store";
 import focusApplicationInjectable from "./electron-app/features/focus-application.injectable";
+import kubectlDownloadingNormalizedArchInjectable from "./kubectl/normalized-arch.injectable";
+import initializeClusterManagerInjectable from "./cluster/initialize-manager.injectable";
+import addKubeconfigSyncAsEntitySourceInjectable from "./start-main-application/runnables/kube-config-sync/add-source.injectable";
 
 export function getDiForUnitTesting(opts: { doGeneralOverrides?: boolean } = {}) {
   const {
@@ -127,7 +130,7 @@ export function getDiForUnitTesting(opts: { doGeneralOverrides?: boolean } = {})
     di.override(electronInjectable, () => ({}));
     di.override(waitUntilBundledExtensionsAreLoadedInjectable, () => async () => {});
     di.override(getRandomIdInjectable, () => () => "some-irrelevant-random-id");
-
+    di.override(kubectlDownloadingNormalizedArchInjectable, () => "amd64");
     di.override(hotbarStoreInjectable, () => ({
       load: () => {},
       getActive: () => ({ name: "some-hotbar", items: [] }),
@@ -136,7 +139,11 @@ export function getDiForUnitTesting(opts: { doGeneralOverrides?: boolean } = {})
 
     di.override(userStoreInjectable, () => ({ startMainReactions: () => {}, extensionRegistryUrl: { customUrl: "some-custom-url" }}) as UserStore);
     di.override(extensionsStoreInjectable, () => ({ isEnabled: (opts) => (void opts, false) }) as ExtensionsStore);
-    di.override(clusterStoreInjectable, () => ({ provideInitialFromMain: () => {}, getById: (id) => (void id, {}) as Cluster }) as ClusterStore);
+    di.override(clusterStoreInjectable, () => ({
+      provideInitialFromMain: () => {},
+      getById: (id) => (void id, {}) as Cluster,
+      clustersList: [] as Cluster[],
+    }) as ClusterStore);
     di.override(fileSystemProvisionerStoreInjectable, () => ({}) as FileSystemProvisionerStore);
 
     overrideOperatingSystem(di);
@@ -215,6 +222,8 @@ const getInjectableFilePaths = memoize(() => [
 const overrideRunnablesHavingSideEffects = (di: DiContainer) => {
   [
     initializeExtensionsInjectable,
+    initializeClusterManagerInjectable,
+    addKubeconfigSyncAsEntitySourceInjectable,
     setupIpcMainHandlersInjectable,
     setupLensProxyInjectable,
     setupSentryInjectable,
